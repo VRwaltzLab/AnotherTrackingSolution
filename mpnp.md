@@ -27,7 +27,7 @@ Total_Error = Sum ( x^Tww^Tx -2cw^Tx + c^2)
 and using linearity:
 Total_Error = x^T(Sum(ww^T))x -2(Sum(cw))^Tx + (Sum(c^2)) 
 and so we get a quadratic program with 6 constraints generated from R^TR = I and an optimization goal of minimizing Total Error.
-This quadratic program has 12 variables, but by using final equation form for Total_error has a fixed number of constants regardless of the initial input size m or n.
+This quadratic program has 12 variables, but by using final equation form for Total_error, the program has a fixed number of constants regardless of the initial input size m or n.
 So this derivation is a linear work O(m) reduction to a small quadratic program
 ## How to solve that quadratic program:
 Many solvers exist. Which one is best for this problem is ...
