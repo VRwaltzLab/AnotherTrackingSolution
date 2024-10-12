@@ -11,5 +11,10 @@ Which then hits a sensor S with receptor distribution s in terms of wavelength a
 ``` g ( s^T Sum_over_angles( o( incident_angle,exit_angle) hadmard_product a(distance)) )``` 
 I am under the impression that when we say something has a matte color 
 when the reflectance distribution is merely scaled by some function of incident and exit angle.
+I would guess that setting the white balance accounts for A's distribution.
+So to identify a matte color (up to 1st bounce precision) in a white-balanced camera,
+I believe we need to invert the gamma function then we can put it on a 2d plane ```R/(R+G+B), B/(R+G+B) ```
+And we label a color by a region of this 2D plane (so that we can ignore the distance and angle dependence of the equations)
 
-So to identify a matte color (up to 1st bounce precision), I believe we need to invert the gamma function and ???
+
+I think this is a good enough idea for a first attempt.
