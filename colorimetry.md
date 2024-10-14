@@ -18,3 +18,10 @@ And we label a color by a region of this 2D plane (so that we can ignore the dis
 
 
 I think this is a good enough idea for a first attempt.
+
+### Note
+Lambertian surfaces are the precise term for the kind of matte-ness I was getting at.
+It might be better do compute R/G and R/G rather R/(R+G+B) and B/(R+B+G)...
+That seems like a more numerically stable equation when something reflects some amount of green light.
+For a sufficiently lambertian surface (like cotton balls), this should divide out the distance and angle effects on color.
+ 
