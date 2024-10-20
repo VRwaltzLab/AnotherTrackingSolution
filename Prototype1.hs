@@ -15,7 +15,7 @@ getCalibrator:: IO [IRLPoint]
 getTrackers:: IO [[IRLPoint]]
 getCameraPositions:: IO [CameraChar]
 generateGridGraph:: ColorMatcher -> Matrix Color -> NamedGraph
-roughColorMatch:: ColorMatcher-- Be careful this doesn't work as an equality measure (non transitive)
+roughColorMatch:: ColorMatcher -- Be careful this doesn't work as an equality measure (non transitive)
 gammaColorMatch:: Gamma -> ColorMatcher
 roughColorMean:: ColorStat
 gammaColorMean:: Gamma -> ColorStat
@@ -37,17 +37,19 @@ findCamera = do singleFrame <- getImage
                 storeCamera (uPnP roughColorMatch (map grabCenter (filter (isMonochrome roughColorMatch roughColorMean) (filter isSmoothBall (getConnectedComponents (generateGridGraph roughColorMatch singleFrame) ) ) ) ) calibrationPoints )
 measureGamma::IO ()
 measureTracker:: IO ()
-mainProcess::[Matrix Colorl]-> Gamma ->[[CameraPoint]]
-mainProcess x y = map (map GrabCenter) . (filter (isMonochrome (gammaColorMatch y ) (gammaColorMean y) ) ) . (filter isRoughBall). getConnectedComponents .(generateGridGraph (gammaColorMatch y) ) x
+mainProcess:: (Matrix Color, Gamma) ->[[CameraPoint]]
+mainProcess (x, y) = (map GrabCenter (filter (isMonochrome (gammaColorMatch y ) (gammaColorMean y) )  (filter isRoughBall (getConnectedComponents (generateGridGraph (gammaColorMatch y) x ) ) ) ) )
 measureTracker = do manyFrames <- getViews
                     curves <- getGammas
-                    cameraPositions <- GetPositions
-                    storeTracker (map (\x -> RayIntersect x cameraPositions)  (mainProcess manyViews curves)  )
+                    cameraPositions <- getPositions
+                    storeTracker (map (\(x,y) -> RayIntersect x y cameraPositions) (zip curves (map mainProcess (zip manyViews curves) ) ) )
 trackAllTrackers::IO ()
 trackAllTrackers = do 
-                    manyFrames <- GetViews
-                    curve <-GetGamma
-                    cameraPositions <-GetPositions
-                    trackerArrangements <- GetTrackers
-                    let ptbyTrackerbyCamerabyColor = arrangeByTracker (gammaColormatch curve) (MainProcess manyViews curve) in 
+                    manyFrames <- getViews
+                    curves <-getGammas
+                    cameraPositions <-getPositions
+                    trackerArrangements <- getTrackers
+                    let ptbyTrackerbyCamerabyColor = arrangeByTracker gammaColormatch curve (map mainProcess(zip manyViews curve) ) in 
                       map  (\(x,y) -> mPnP (gammaColormatch curve) cameraPositions x y) (zip trackerArrangements ptbyTrackerbyCamerabyColor)
+
+                      --FUCKING GAMMA CURVES  : (
