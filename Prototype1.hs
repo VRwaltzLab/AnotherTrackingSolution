@@ -1,6 +1,6 @@
 import Graphite
 roughEquals:: Real -> Real -> Bool
-roughEquals a b = a*1.05 > b && b*1.05 > a
+roughEquals a b =  (a*1.05 > b &&  b >= a ) || (b*1.05 > a  && a >= b ) --1.05 is a 5 percent margin or error
 data Color = RGB Real Real Real --SOMETIMES USES PHOTON AND SOMETIMES USES Computer Numbers
 instance Eq Color where
   (RGB r g b) == (RGB a d c) = (roughEquals r a) && (roughEquals g d) && (roughEquals b c)
@@ -19,7 +19,7 @@ data IRLPoint = Point Hue Real Real Real
 type Gamma = ([Int],[Int],[Int])
 type CameraChar = (Matrix Real, Matrix Real)
 getImage :: IO Matrix Color --USE IDENTITY FUNCTION TO GO FROM RGB to Color
-getViews :: [Gamma] -> IO [Matrix RawColor] --DO GAMMA CORRECTION HERE
+getViews :: [Gamma] -> IO [Matrix Color] --DO GAMMA CORRECTION HERE
 getGammas :: IO [Gamma]
 getCalibrator:: IO [WeirdPoint]
 getTrackers:: IO [[IRLPoint]]
@@ -28,16 +28,16 @@ generateGridGraph:: Matrix Color -> UGraph CameraPoint Int
 getConnectedComponents:: UGraph v e -> [UGraph v e] -- MIGHT NEED TYPE CONSTRAINTS
 isRoughBall:: UGraph CameraPoint Int -> Bool
 isSmoothBall:: UGraph CameraPoint Int -> Bool
+mean:: (VectorSpace v, s ~ Scalar v, Fractional s) => [v] -> v
 isMonochrome:: UGraph CameraPoint Int -> Bool -- Converts to Hue
 isMonoShaded:: UGraph CameraPoint Int -> Bool -- Doesn't convert to hue
-mean:: (VectorSpace v, s ~ Scalar v, Fractional s) => [v] -> v
 uPnP:: [CameraPoint] -> [WierdPoint] -> CameraChar --NEEDS TO DO COLOR SORTING AT START
 mPnP:: [CameraChar] -> [[CameraPoint]] -> [IRLPoint] ->  Matrix Real --NEEDS TO DO COLOR SORTING AT START
 getRayIntersect:: [[CameraPoint]] -> [CameraChar] -> IRLPoint --NEEDS TO DO COLOR SORTING AT START
 storeCamera:: CameraChar -> IO ()
 storeTracker::[IRLPoint] -> IO ()
 storePositions:: [Matrix Real] -> IO()
-arrangeByTracker:: [[CameraPoint]] -> [[[CameraPoint]]]
+arrangeByTracker:: [[IRLPoint]] -> [[CameraPoint]] -> [[[CameraPoint]]]
 findCamera:: IO ()
 findCamera = do singleFrame <- getImage
                 calibrationPoints <- getCalibrator
@@ -55,5 +55,5 @@ trackAllTrackers = do curves <- getGammas
                     manyFrames <- getViews curves
                     cameraPositions <-getPositions
                     trackerArrangements <- getTrackers
-                    let ptbyTrackerbyCamerabyColor = arrangeByTracker (map mainProcess manyViews) in 
+                    let ptbyTrackerbyCamerabyColor = arrangeByTracker trackerArrangements (map mainProcess manyViews) in 
                     storePositions (map (\(x,y) -> mPnP cameraPositions x y) (zip ptbyTrackerbyCamerabyColor trackerArrangements) )
