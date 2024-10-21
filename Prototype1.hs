@@ -1,44 +1,48 @@
 import Graphite
-data Color =  RGB Byte Byte Byte
-data Pixel = Point Color Int Int
-data CameraPoint = Point Color Real Real
-data IRLPoint = Point Color Real Real Real
+data RawColor =  RawRGB Byte Byte Byte 
+instance Eq
+data Color = PhotonRGB Real Real Real
+instance Eq
+data Hue =  RB Real Real
+instance Eq
+data Pixel = Point RawColor Int Int 
+data WeirdPoint = Point Color Int Int
+data CameraPoint = Point Hue Real Real
+data RawCameraPoint = Point RawColor Real Real
+data IRLPoint = Point Hue Real Real Real
 type Gamma = ([Int],[Int],[Int])
-type NamedGraph = UGraph Pixel Int
 type CameraChar = (Matrix Real, Matrix Real)
-type ColorMatcher = Color -> Color -> Bool
-type ColorStat = [Color] -> Color
-getImage :: IO Matrix Color
-getViews :: IO [Matrix Color]
+getImage :: IO Matrix RawColor
+getViews :: IO [Matrix RawColor]
 getGammas :: IO [Gamma]
 getCalibrator:: IO [IRLPoint]
 getTrackers:: IO [[IRLPoint]]
 getCameraPositions:: IO [CameraChar]
-generateGridGraph:: ColorMatcher -> Matrix Color -> NamedGraph
-roughColorMatch:: ColorMatcher -- Be careful this doesn't work as an equality measure (non transitive)
-gammaColorMatch:: Gamma -> ColorMatcher
-roughColorMean:: ColorStat
-gammaColorMean:: Gamma -> ColorStat
+generateGridGraph::(Eq c) => Matrix c -> UGraph Pixel Int
+gammaColorCorrect:: Gamma -> RawColor -> Color
 getConnectedComponents:: UGraph v e -> [UGraph v e] -- MIGHT NEED TYPE CONSTRAINTS
-isRoughBall:: NamedGraph -> Bool
-isSmoothBall:: NamedGraph -> Bool
-isMonochrome:: ColorMatcher -> ColorStat -> NamedGraph -> Bool
-grabCenter:: NamedGraph -> CameraPoint
-uPnP:: ColorMatcher -> [CameraPoint] -> [IRLPoint] -> CameraChar --NEEDS TO DO COLOR SORTING AT START
-mPnP:: ColorMatcher -> [CameraChar] -> [[CameraPoint]] -> [IRLPoint] ->  Matrix Real --NEEDS TO DO COLOR SORTING AT START
-getRayIntersect:: ColorMatcher -> [CameraPoint] -> [CameraChar] -> IRLPoint --NEEDS TO DO COLOR SORTING AT START
+isRoughBall:: UGraph Pixel Int -> Bool
+isSmoothBall:: UGraph Pixel Int -> Bool
+convertGraph:: Gamma -> UGraph Pixel Int -> UGraph WeirdPoint Int
+isMonochrome:: UGraph WeirdPoint Int -> Bool
+isRMonochrome:: UGraph Pixel Int -> Bool
+grabCenter:: UGraph Pixel Int -> RawCameraPoint
+grabCenterAndHue:: UGraph WeirdPoint Int -> CameraPoint
+uPnP:: [RawCameraPoint] -> [IRLPoint] -> CameraChar --NEEDS TO DO COLOR SORTING AT START
+mPnP:: [CameraChar] -> [[CameraPoint]] -> [IRLPoint] ->  Matrix Real --NEEDS TO DO COLOR SORTING AT START
+getRayIntersect:: [CameraPoint] -> [CameraChar] -> IRLPoint --NEEDS TO DO COLOR SORTING AT START
 storeCamera:: CameraChar -> IO ()
 storeTracker::[IRLPoint] -> IO ()
 storePositions:: [Matrix Real] -> IO()
-arrangeByTracker:: ColorMatcher -> [[CameraPoint]] -> [[[CameraPoint]]]
+arrangeByTracker:: [[CameraPoint]] -> [[[CameraPoint]]]
 findCamera:: IO ()
 findCamera = do singleFrame <- getImage
                 calibrationPoints <- getCalibrator
-                storeCamera (uPnP roughColorMatch (map grabCenter (filter (isMonochrome roughColorMatch roughColorMean) (filter isSmoothBall (getConnectedComponents (generateGridGraph roughColorMatch singleFrame) ) ) ) ) calibrationPoints )
+                storeCamera (uPnP (map grabCenter(filter isRMonochrome (filter isSmoothBall (getConnectedComponents (generateGridGraph singleFrame) ) ) ) ) calibrationPoints )
 measureGamma::IO ()
 measureTracker:: IO ()
 mainProcess:: (Matrix Color, Gamma) ->[[CameraPoint]]
-mainProcess (x, y) = (map GrabCenter (filter (isMonochrome (gammaColorMatch y ) (gammaColorMean y) )  (filter isRoughBall (getConnectedComponents (generateGridGraph (gammaColorMatch y) x ) ) ) ) )
+mainProcess (x, y) = (map GrabCenter (filter (isMonochrome (gammaColorMatch y ) (gammaColorMean y) )  (filter isRoughBall (getConnectedComponents (generateGridGraph x) ) ) ) )
 measureTracker = do manyFrames <- getViews
                     curves <- getGammas
                     cameraPositions <- getPositions
