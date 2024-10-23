@@ -1,4 +1,5 @@
 import Graphite
+import hGeometry
 import Data.List
 roughEquals:: Real -> Real -> Bool
 roughEquals a b =  (a*1.05 > b &&  b >= a ) || (b*1.05 > a  && a >= b ) --1.05 is a 5 percent margin or error
@@ -62,16 +63,31 @@ getConnectedComponents g =
         let notComponent = vs \\ oneComponent in 
           (removeVerticies notComponent g ):( getConnectedComponents (removeVerticies oneComponent g) )
   else [] --RUNTIME MIGHT BE BAD :(
-isRoughBall:: UGraph CameraPoint Int -> Bool 
 safetyFactor = 2.0
 pi = 3.14159
+ballTest:: Real -> Real -> Bool
+ballTest area perimeter = area*4*pi < perimeter*perimeter*safetyFactor 
+       -- constants come from circle fact 4*pi*area = circumference^2
+isRoughBall:: UGraph CameraPoint Int -> Bool        
 isRoughBall g =
   let perimeterEstimate = length . filter (<4) . degrees g in
     let areaEstimate = order g in
-       areaEstimate*4*pi < perimeterEstimate*perimeterEstimate*safetyFactor 
-       -- constants come from circle fact 4*pi*area = circumference^2
+       ballTest areaEstimate perimeterEstimate
+distance:: (Real, Real) -> (Real, Real) -> Real
+distance (x,y) (z,w) = sqrt ((x-z)*(x-z) + (y-w)*(y-w) )
+perimeterFromPoints:: [(Real,Real)] -> Real
+perimeterFromPoints x:xs = (distance x (last xs)) + (pathlengthFromPoints (x:xs) ) 
+pathlengthFromPoints:: Nonempty( (Real,Real) ) -> Real
+pathlengthFromPoints x:[] = 0
+pathlengthFromPoints x:(y:ys) = (distance x y) + (pathlengthFromPoints (y:ys) )
+unpackPoint::CameraPoint -> (Real,Real)
+unpackPoint (Point c u v) = (u,v)
+--convexHull, toPoints  from hgeometry package
 isSmoothBall:: UGraph CameraPoint Int -> Bool
-
+isSmoothBall g = 
+  let areaEstimate = order g in 
+    let perimeterEstimate = perimeterFromPoints . toPoints . convexHull . map unpackPoint . verticies g in 
+     ballTest areaEstimate perimeterEstimate
 mean:: (VectorSpace v, s ~ Scalar v, Fractional s) => [v] -> v
 mean xs = (sum xs) / (fromInteger length xs) 
 isMonochrome:: UGraph CameraPoint Int -> Bool -- Converts to Color
