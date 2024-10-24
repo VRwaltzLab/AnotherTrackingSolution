@@ -1,5 +1,6 @@
 import Graphite
 import hGeometry
+import matrix
 import Data.List
 roughEquals:: Real -> Real -> Bool
 roughEquals a b =  (a*1.05 > b &&  b >= a ) || (b*1.05 > a  && a >= b ) --1.05 is a 5 percent margin or error
@@ -10,6 +11,8 @@ instance Eq Shade where
 instance AdditiveGroup Shade where
   zeroV = (RGB 0.0 0.0 0.0 )
   (RGB r g b) + (RGB r' g' b') = (RGB (r+r') (g+g') (b+b') )
+  negateV (RGB r g b) = (RGB (-r) (-g) (-b) )
+  (RGB r g b) - (RGB r' g' b') = (RGB (r-r') (g-g') (b-b'))
 instance VectorSpace Shade where
   Scalar Shade = Real
   (*^) s (RGB r g b) = (RGB s*r s*g s*b)
@@ -19,8 +22,7 @@ data Color =  RBoverG Real Real
 instance Eq Color where
   (RBoverG r b) == (RBoverG r' b') = (roughEquals r r') && (roughEquals b b')
  -- (RGoverB r g) == (RBoverG r' g') = (roughEquals r r') && (roughEquals g g')
- -- (GBoverR g b) == (GBoverR g' b') = (roughEquals g g') && (roughEquals b b') 
- 
+ -- (GBoverR g b) == (GBoverR g' b') = (roughEquals g g') && (roughEquals b b')  
 toColor:: Shade -> Color
 toColor (RGB r g b) = (RBoverG (r/g) (b/g) )
 
@@ -28,6 +30,8 @@ data CameraPoint = Point Shade Real Real
 instance AdditiveGroup CameraPoint where
   zeroV = (Point (RGB 0.0 0.0 0.0) 0.0 0.0 )
   (Point c u v ) + (Point c' u' v') = (Point (c + c') (u + u') (v + v') )
+  negateV (Point c u v) = Point (negateV c) (-u) (-v)
+  (Point c u v ) - (Point c' u' v') = (Point (c-c') (u-u') (v-v') )
 instance VectorSpace CameraPoint where
   Scalar CameraPoint = Real
   (*^) s (Point c u v)  = (Point s*c s*u s*v)
@@ -53,7 +57,20 @@ getCalibrator:: IO [WeirdPoint]
 getTrackers:: IO [[IRLPoint]]
 getCameraPositions:: IO [CameraChar]
 
+--uses matrix package
+cartProd xs ys = [(x,y) | x <- xs, y <- ys]
 generateGridGraph:: Matrix Shade -> UGraph CameraPoint Int
+generateGridGraph m = ggg m (\s t -> (toColor s) == (toColor t) )
+generateGridGraphShade:: Matrix Shade -> UGraph CameraPoint Int
+generateGridGraphShade m = ggg m (==)
+ggg:: Matrix Shade -> (Shade->Shade->Bool) -> UGraph CameraPoint Int
+ggg ms f = 
+  let m =  mapPos (\(r,c) myShade -> (Point myShade (fromInteger r) (fromInteger c) ) ) ms in
+    let cameraPoints = toList m in
+      let dummyVal = 0 in
+        let radius = 1.1 in
+      --warning quadratic algorithm
+          fromEdgesList map (\(a,b) -> Edge a b dummyVal ) . filter (\((Point c u v),(Point c' u' v') ) -> (f c c') && ((u-u')*(u-u') +(v-v')*(v-v'))<= Radius) . cartProd cameraPoints cameraPoints
 
 getConnectedComponents::(Hashable v, Eq v, Ord v) => UGraph v e -> [UGraph v e] -- MIGHT NEED TYPE CONSTRAINTS
 getConnectedComponents g = 
@@ -113,7 +130,7 @@ arrangeByTracker:: [[IRLPoint]] -> [[CameraPoint]] -> [[[CameraPoint]]]
 findCamera:: IO ()
 findCamera = do singleFrame <- getImage
                 calibrationPoints <- getCalibrator
-                storeCamera (uPnP (map mean(filter isMonoShaded (filter isSmoothBall (getConnectedComponents (generateGridGraph singleFrame) ) ) ) ) calibrationPoints )
+                storeCamera (uPnP (map mean(filter isMonoShaded (filter isSmoothBall (getConnectedComponents (generateGridGraphShade singleFrame) ) ) ) ) calibrationPoints )
 measureGamma::IO () --Strategy undefined
 
 mainProcess:: Matrix Shade ->[CameraPoint]
