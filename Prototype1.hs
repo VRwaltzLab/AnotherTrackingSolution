@@ -58,6 +58,7 @@ getTrackers:: IO [[IRLPoint]]
 getCameraPositions:: IO [CameraChar]
 
 --uses matrix package
+cartProd:: [a] -> [b] -> [(a,b)] 
 cartProd xs ys = [(x,y) | x <- xs, y <- ys]
 generateGridGraph:: Matrix Shade -> UGraph CameraPoint Int
 generateGridGraph m = ggg m (\s t -> (toColor s) == (toColor t) )
@@ -127,14 +128,24 @@ storeCamera:: CameraChar -> IO ()
 storeTracker::[IRLPoint] -> IO ()
 storePositions:: [Matrix Real] -> IO()
 arrangeByTracker:: [[IRLPoint]] -> [[CameraPoint]] -> [[[CameraPoint]]]
+postGraph:: UGraph Camerpoint Int -> IO() 
+postPoint:: Camerapoint -> IO()
+test1 ::IO()
+test1 = do singleFrame <- getImage
+           postGraph generateGridGraphShade singleFrame
+           forkMapM postGraph (getConnectedComponents (generateGridGraphShade singleFrame))
+           forkMapM postGraph (filter isSmoothBall (getConnectedComponents (generateGridGraphShade singleFrame) ))
+           forkMapM postGraph (filter isMonoShaded (filter isSmoothBall (getConnectedComponents (generateGridGraphShade singleFrame) ) ) )
+           forkMapM postPoint (map mean.verticies (filter isMonoShaded (filter isSmoothBall (getConnectedComponents (generateGridGraphShade singleFrame) ) ) ) )
+
 findCamera:: IO ()
 findCamera = do singleFrame <- getImage
                 calibrationPoints <- getCalibrator
-                storeCamera (uPnP (map mean(filter isMonoShaded (filter isSmoothBall (getConnectedComponents (generateGridGraphShade singleFrame) ) ) ) ) calibrationPoints )
+                storeCamera (uPnP (map mean.verticies (filter isMonoShaded (filter isSmoothBall (getConnectedComponents (generateGridGraphShade singleFrame) ) ) ) ) calibrationPoints )
 measureGamma::IO () --Strategy undefined
 
 mainProcess:: Matrix Shade ->[CameraPoint]
-mainProcess = (map mean) . (filter isMonochrome) . (filter isRoughBall) . getConnectedComponents . generateGridGraph
+mainProcess = (map mean.verticies) . (filter isMonochrome) . (filter isRoughBall) . getConnectedComponents . generateGridGraph
 measureTracker:: IO ()
 measureTracker = do curves <- getGammas
                     manyFrames <- getViews curves
